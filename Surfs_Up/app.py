@@ -47,7 +47,8 @@ def home():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    last12mo_date = dt.date(2017, 8, 23) - dt.timedelta(days =365)
+    recent_date = session.query(func.max(Measurement.date)).scalar()
+    last12mo_date = dt.date.fromisoformat(recent_date) - dt.timedelta(days =365)
     last12mo_df= session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= last12mo_date).all()
     dict = {}
     for date,percip in last12mo_df:
@@ -64,9 +65,16 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    recent_date = session.query(func.max(Measurement.date)).scalar()
+    last12mo_date = dt.date.fromisoformat(recent_date) - dt.timedelta(days =365)
+    most_active = session.query(Measurement.station,func.count(Measurement.station)).group_by(Measurement.station)\
+    .order_by(func.count(Measurement.station).desc()).limit(1).scalar()
 
+    # Query last 12 months of data, extracting date and temperature datapoints
+    data = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= last12mo_date).filter(Measurement.station == most_active).all()
+    temp_list= [temp for date,temp in data]
 
-    return "Test"
+    return jsonify(temp_list)
 
 @app.route("/api/v1.0/<start>")
 def start():
